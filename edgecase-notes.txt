@@ -1,0 +1,9 @@
+DISPLAY CONNECTED OR DISCONNECTED:
+- monitoring of backlight class using inotify
+- gracefully terminates the related struct
+- creates new struct on display connection
+
+BRIGHTNESS OVERWRITTEN BY OTHER PROGRAM:
+- only "corrects" on the next tick if brightness is higher than calculated (idle managers will often set brightness lower)
+- headlight should be stopped if manually intervention is wanted
+- IPC/control program will allow a temporary inhibit and override on a per display basis
