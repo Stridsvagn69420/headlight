@@ -1,5 +1,12 @@
-use std::io;
+use std::{fs, io};
+use std::io::{Read, Write, Seek, SeekFrom};
+use std::fs::File;
+use std::path::Path;
 use super::BacklightController;
+use atoi::atoi;
+use itoa::Buffer;
+
+const SYS_CLASS_BACKLIGHT: &str = "/sys/class/backlight";
 
 /// Linux backlight class
 /// 
@@ -10,6 +17,43 @@ pub struct Backlight {
 	/// 
 	/// The ID represents the name of the symlink found at `/sys/class/backlight`.
 	id: String,
+
+
+	/// Maximum brightness
+	/// 
+	/// The maximum brightness read from `max_brightness`.
+	max: u32,
+
+	/// Brightness value file
+	/// 
+	/// The [File] handle of `brightness` to read and write the brightness value.
+	brightness: File,
+}
+
+impl Backlight {
+	/// New Backlight
+	/// 
+	/// Creates a new [Backlight] controller based on an entry inside the sysfs.
+	/// `bl`: The path to an entry inside `/sys/class/backlight`. You can get it easily from a call to [fs::read_dir].
+	pub fn new(bl: impl AsRef<Path>) -> io::Result<Self> {
+		// Read maximum brightness once
+		let maxdata = fs::read(bl.as_ref().join("max_brightness"))?;
+		let max = atoi(&maxdata).unwrap();
+
+		// Open brightness file
+		let brightness = File::options()
+			.read(true)
+			.write(true)
+			.open(bl.as_ref().join("brightness"))?;
+
+		// Convert path filename into ID string
+		let Some(id) = bl.as_ref().file_name().map(|x| x.to_string_lossy().to_string()) else {
+			return Err(io::Error::other("path seems to be corrupted"));
+		};
+
+		// Return created struct
+		Ok(Self { id, max, brightness })
+	}
 }
 
 impl BacklightController for Backlight {
@@ -18,14 +62,31 @@ impl BacklightController for Backlight {
 	}
 
 	fn max_brightness(&self) -> u32 {
-		todo!()
+		self.max
 	}
 
-	fn get_brightness(&self) -> io::Result<u32> {
-		todo!()
+	fn get_brightness(&mut self) -> io::Result<u32> {
+		// Reset head back to start of file stream and read into buffer
+		let mut buf = [0; 5];
+		self.brightness.seek(SeekFrom::Start(0))?;
+		self.brightness.read_exact(&mut buf)?;
+
+		// Convert file. Unwrapping should be safe as otherwise the sysfs would be broken.
+		let level = atoi(&buf).unwrap();
+		Ok(level)
 	}
 
-	fn set_brightness(&self, level: u32) -> io::Result<()> {
-		todo!()
+	fn set_brightness(&mut self, level: u32) -> io::Result<()> {
+		// Abort if provided level is larger than max
+		if level > self.max {
+			return Err(io::Error::new(io::ErrorKind::FileTooLarge, "provided brightness higher than max"));
+		}
+
+		// Convert u32 into ASCII number
+		let mut buf = Buffer::new();
+		let conv = buf.format(level).as_bytes();
+
+		// Write ASCII number into file
+		self.brightness.write_all(conv)
 	}
 }
