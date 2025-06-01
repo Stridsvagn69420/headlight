@@ -6,7 +6,7 @@ use super::BacklightController;
 use atoi::atoi;
 use itoa::Buffer;
 
-const SYS_CLASS_BACKLIGHT: &str = "/sys/class/backlight";
+pub const SYS_CLASS_BACKLIGHT: &str = "/sys/class/backlight";
 
 /// Linux backlight class
 /// 
@@ -34,20 +34,28 @@ impl Backlight {
 	/// New Backlight
 	/// 
 	/// Creates a new [Backlight] controller based on an entry inside the sysfs.
-	/// `bl`: The path to an entry inside `/sys/class/backlight`. You can get it easily from a call to [fs::read_dir].
+	/// - `bl`: The path to an entry inside `/sys/class/backlight`. You can get it easily from a call to [fs::read_dir].
 	pub fn new(bl: impl AsRef<Path>) -> io::Result<Self> {
+		// Try to correct provided path if
+		let blref = bl.as_ref();
+		let syspath = if blref.is_absolute() {
+			blref.to_path_buf()
+		} else {
+			Path::new(SYS_CLASS_BACKLIGHT).join(blref)
+		};
+
 		// Read maximum brightness once
-		let maxdata = fs::read(bl.as_ref().join("max_brightness"))?;
+		let maxdata = fs::read(syspath.join("max_brightness"))?;
 		let max = atoi(&maxdata).unwrap();
 
 		// Open brightness file
 		let brightness = File::options()
 			.read(true)
 			.write(true)
-			.open(bl.as_ref().join("brightness"))?;
+			.open(syspath.join("brightness"))?;
 
 		// Convert path filename into ID string
-		let Some(id) = bl.as_ref().file_name().map(|x| x.to_string_lossy().to_string()) else {
+		let Some(id) = syspath.file_name().map(|x| x.to_string_lossy().to_string()) else {
 			return Err(io::Error::other("path seems to be corrupted"));
 		};
 
@@ -69,10 +77,10 @@ impl BacklightController for Backlight {
 		// Reset head back to start of file stream and read into buffer
 		let mut buf = [0; 5];
 		self.brightness.seek(SeekFrom::Start(0))?;
-		self.brightness.read_exact(&mut buf)?;
+		let count = self.brightness.read(&mut buf)?;
 
 		// Convert file. Unwrapping should be safe as otherwise the sysfs would be broken.
-		let level = atoi(&buf).unwrap();
+		let level = atoi(&buf[..count]).unwrap();
 		Ok(level)
 	}
 
