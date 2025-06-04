@@ -1,0 +1,14 @@
+DISPLAY CONNECTED OR DISCONNECTED:
+- monitoring of backlight class using inotify
+- gracefully terminates the related struct
+- creates new struct on display connection
+
+BRIGHTNESS OVERWRITTEN BY OTHER PROGRAM:
+- only "corrects" on the next tick if brightness is higher than calculated (idle managers will often set brightness lower)
+- headlight should be stopped if manually intervention is wanted
+- (IPC/control program will allow a temporary inhibit and override on a per display basis)
+
+THREAD MODEL:
+- Controller thread: manages backlight controllers, listens to update-events (by Sunrise thread or possible IPC program)
+- inotify thread: watches /sys/class/backlight for changes
+- Sunrise thread: calculates when to send an update to the Controller thread as well as the value (currently has to do a sleep -> check-time -> do-something-if -> repeat loop)

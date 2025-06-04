@@ -5,5 +5,16 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+# ASCII-int conversion
 atoi = "2.0"
 itoa = "1.0"
+# Config parsing
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+# Sunrise and sunset calcuations
+sunrise = "2.1"
+
+[profile.release]
+opt-level = 3
+strip = true
+lto = true

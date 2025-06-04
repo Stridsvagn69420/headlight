@@ -3,6 +3,8 @@ use std::fs;
 use std::thread::sleep;
 use std::time::Duration;
 
+mod config;
+mod meta;
 mod interfaces;
 use interfaces::{Backlight, BacklightController, SYS_CLASS_BACKLIGHT};
 
