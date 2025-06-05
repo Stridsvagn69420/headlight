@@ -5,8 +5,18 @@ DISPLAY CONNECTED OR DISCONNECTED:
 
 BRIGHTNESS OVERWRITTEN BY OTHER PROGRAM:
 - only "corrects" on the next tick if brightness is higher than calculated (idle managers will often set brightness lower)
-- headlight should be stopped if manually intervention is wanted
+- headlight should be stopped (systemctl, pkill, etc.) if manual intervention is wanted
 - (IPC/control program will allow a temporary inhibit and override on a per display basis)
+
+BRIGHTNESS CONTROLLERS:
+- I might drop the modular model currently present, simply because I can focus on one interface that is the sysfs backlight class
+- some drivers might already expose an external display on there
+- the only other interface I'd maybe add is DDC anyway
+
+SUNRISE CALCULATIONS:
+- currently done by sunrise crate
+- however, the returned DateTime is 1/1/1970 if the event does not happen on the same day
+- so I might make my own library/crate (submodule for now), which differs in how it presents the calculation
 
 THREAD MODEL:
 - Controller thread: manages backlight controllers, listens to update-events (by Sunrise thread or possible IPC program)
