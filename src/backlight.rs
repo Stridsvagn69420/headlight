@@ -2,7 +2,6 @@ use std::{fs, io};
 use std::io::{Read, Write, Seek, SeekFrom};
 use std::fs::File;
 use std::path::Path;
-use super::BacklightController;
 use atoi::atoi;
 use itoa::Buffer;
 
@@ -11,7 +10,7 @@ pub const SYS_CLASS_BACKLIGHT: &str = "/sys/class/backlight";
 /// Linux backlight class
 /// 
 /// This struct refers to the Linux sysfs interface at `/sys/class/backlight`.
-/// It is usually used for laptop and other embedded displays.
+/// It is usually used for laptops and other embedded displays.
 pub struct Backlight {
 	/// ID
 	/// 
@@ -62,18 +61,26 @@ impl Backlight {
 		// Return created struct
 		Ok(Self { id, max, brightness })
 	}
-}
 
-impl BacklightController for Backlight {
-	fn id(&self) -> &str {
+	/// Controller ID
+	/// 
+	/// The unique identifier of a controller.
+	/// It's currently the entry name in [SYS_CLASS_BACKLIGHT].
+	pub fn id(&self) -> &str {
 		&self.id
 	}
 
-	fn max_brightness(&self) -> u32 {
+	/// Maximum brightness
+	/// 
+	/// Returns the maximum brightness of the controlled display.
+	pub fn max_brightness(&self) -> u32 {
 		self.max
 	}
 
-	fn get_brightness(&mut self) -> io::Result<u32> {
+	/// Get brightness
+	/// 
+	/// Returns the currently set brightness of the controlled display.
+	pub fn get_brightness(&mut self) -> io::Result<u32> {
 		// Reset head back to start of file stream and read into buffer
 		let mut buf = [0; 5];
 		self.brightness.seek(SeekFrom::Start(0))?;
@@ -84,7 +91,10 @@ impl BacklightController for Backlight {
 		Ok(level)
 	}
 
-	fn set_brightness(&mut self, level: u32) -> io::Result<()> {
+	/// Set brightness
+	/// 
+	/// Sets the brightness for the controlled display.
+	pub fn set_brightness(&mut self, level: u32) -> io::Result<()> {
 		// Abort if provided level is larger than max
 		if level > self.max {
 			return Err(io::Error::new(io::ErrorKind::FileTooLarge, "provided brightness higher than max"));
@@ -96,5 +106,20 @@ impl BacklightController for Backlight {
 
 		// Write ASCII number into file
 		self.brightness.write_all(conv)
+	}
+
+	/// Set brightness by percentage
+	/// 
+	/// Sets the brightness by a given percentage of the `max_brightness`.
+	/// Note that this isn't the most accurate to set brightness, but the most convenient one.
+	fn set_brightness_percent(&mut self, level: f32) -> io::Result<()> {
+		// Checks given percentage to not continue any further if it's invalid.
+		if !(0.0..=1.0).contains(&level) {
+			let err = io::Error::new(io::ErrorKind::FileTooLarge, "percentage not in range of 0% and 100%");
+			return Err(err);
+		}
+		// Calculate into u32 and run it
+		let x = self.max_brightness() as f32 * level;
+		self.set_brightness(x as u32)
 	}
 }

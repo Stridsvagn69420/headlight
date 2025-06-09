@@ -7,12 +7,16 @@ use chrono::Local;
 
 mod config;
 mod meta;
-mod interfaces;
-use interfaces::{Backlight, BacklightController, SYS_CLASS_BACKLIGHT};
+mod backlight;
+use backlight::{Backlight, SYS_CLASS_BACKLIGHT};
 
 fn main() -> Result<(), Box<dyn Error>> {
-	// NOTE: Everything in main is currently just a test!!!
+	infodump()
+}
 
+/// Current test function, will get removed at some point
+fn infodump() -> Result<(), Box<dyn Error>> {
+	println!("{}@{}", meta::NAME, meta::VERSION);
 
 	// Sunrise setup
 	let coords = Coordinates::new(50.88, 7.12).unwrap();
