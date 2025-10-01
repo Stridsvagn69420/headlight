@@ -112,14 +112,14 @@ impl Backlight {
 	/// 
 	/// Sets the brightness by a given percentage of the `max_brightness`.
 	/// Note that this isn't the most accurate to set brightness, but the most convenient one.
-	fn set_brightness_percent(&mut self, level: f32) -> io::Result<()> {
+	fn set_brightness_percent(&mut self, level: f64) -> io::Result<()> {
 		// Checks given percentage to not continue any further if it's invalid.
 		if !(0.0..=1.0).contains(&level) {
 			let err = io::Error::new(io::ErrorKind::FileTooLarge, "percentage not in range of 0% and 100%");
 			return Err(err);
 		}
 		// Calculate into u32 and run it
-		let x = self.max_brightness() as f32 * level;
+		let x = self.max_brightness() as f64 * level;
 		self.set_brightness(x as u32)
 	}
 }

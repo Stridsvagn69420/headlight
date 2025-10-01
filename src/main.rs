@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::fs;
+use std::env;
 use std::thread::sleep;
 use std::time::Duration;
 use sunrise::{Coordinates, SolarDay, SolarEvent, DawnType};
@@ -8,11 +9,104 @@ use chrono::Local;
 mod config;
 mod meta;
 mod backlight;
+use config::Config;
 use backlight::{Backlight, SYS_CLASS_BACKLIGHT};
 
+
 fn main() -> Result<(), Box<dyn Error>> {
-	infodump()
+	// Get command-line parameters and load configuration
+	let args: Vec<String> = env::args().collect();
+	let cfg = Config::load(args.get(1)).unwrap_or_default();
+
+	// Location
+	let coords = Coordinates::from(&cfg.location);
+
+	// Current Solar Day
+	let date = Local::now();
+	let mut solday = SolarDay::new(coords, date.date_naive());
+	if let Some(alt) = cfg.location.alt {
+		solday = solday.with_altitude(alt);
+	}
+
+	// Calculate events
+	let dawn = solday.event_time(SolarEvent::Dawn(DawnType::Civil));
+	let sunrise = solday.event_time(SolarEvent::Sunrise);
+	let sunset = solday.event_time(SolarEvent::Sunset);
+	let dusk: chrono::DateTime<chrono::Utc> = solday.event_time(SolarEvent::Dusk(DawnType::Civil));
+
+	let lumam = cfg.brightness.day - cfg.brightness.night;
+	let lumpm = cfg.brightness.night - cfg.brightness.day;
+	let twilam = (sunrise - dawn).as_seconds_f64();
+	let twilpm = (dusk - sunset).as_seconds_f64();
+
+	let dam = lumam / twilam;
+	let dpm = lumpm / twilpm;
+
+	// Print data
+	println!("-------------------[UTC]-------------------");
+	println!("[Horizon] Sunrise: {}     | Sunset: {}    ", sunrise, sunset);
+	println!("[Light]   Dawn:    {}     | Dusk:   {}    ", dawn, dusk);
+	println!("[Delta t] A.M.:    {}     | P.M.:   {}    ", twilam, twilpm);
+	println!("[Delta l] A.M:     {}%    | P.M.:   {}%   ", lumam * 100.0, lumpm * 100.0);
+	println!("[Rate]    A.M.:    {}%/s  | P.M.:   {}%/s ", dam * 100.0, dpm * 100.0);
+
+	Ok(())
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /// Current test function, will get removed at some point
 fn infodump() -> Result<(), Box<dyn Error>> {

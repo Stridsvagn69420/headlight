@@ -1,8 +1,10 @@
 use std::io;
 use std::fs;
 use std::path::Path;
+use std::default::Default;
 use std::fmt::Display;
 use serde::Deserialize;
+use sunrise::Coordinates;
 use toml;
 use crate::meta::NAME;
 
@@ -12,30 +14,54 @@ const CONFIG_FILENAME: &str = "config.toml";
 /// Location settings
 /// 
 /// Currently this sets the location manually by latitude and longitude.
-#[derive(Deserialize)]
-struct Location {
+#[derive(Deserialize, Default)]
+pub(crate) struct Location {
 	/// Latitude
-	lat: f32,
+	pub lat: f64,
 
 	/// Longitude
-	lon: f32
+	pub lon: f64,
+
+	/// Height AMSL
+	pub alt: Option<f64>
+}
+
+impl From<Location> for Coordinates {
+	fn from(value: Location) -> Self {
+		Self::from(&value)
+	}
+}
+
+impl From<&Location> for Coordinates {
+	fn from(value: &Location) -> Self {
+		Coordinates::new(value.lat, value.lon).unwrap_or(Coordinates::new(0.0, 0.0).unwrap())
+	}
 }
 
 /// Brightness settings
 /// 
 /// This set the display brightness for day and night.
-/// Values have to be set as [f32].
+/// Values have to be set as [f64].
 #[derive(Deserialize)]
-struct Brightness {
-	day: f32,
-	night: f32
+pub(crate) struct Brightness {
+	/// Day brightness percentage
+	pub day: f64,
+
+	/// Night brightness percentage
+	pub night: f64
+}
+
+impl Default for Brightness {
+	fn default() -> Self {
+		Self { day: 1.0, night: 0.4 }
+	}
 }
 
 /// Main config
-#[derive(Deserialize)]
-struct Config {
-	location: Location,
-	brightness: Brightness
+#[derive(Deserialize, Default)]
+pub(crate) struct Config {
+	pub location: Location,
+	pub brightness: Brightness
 }
 
 impl Config {
